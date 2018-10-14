@@ -469,6 +469,15 @@ if get_option('default_library') == 'static'
   gst_c_args += ['-DGST_STATIC_COMPILATION']
 endif
 
+hawktracer_option = get_option('hawktracer-profiler')
+hawktracer_dep = dependency('hawktracer', version : '>= 0.6.0', required : hawktracer_option)
+
+profiling_deps = []
+if hawktracer_dep.found()
+    profiling_deps = [hawktracer_dep]
+    gst_c_args += ['-DGST_TRACER_ENABLE_HAWKTRACER']
+endif
+
 # Used in gst/parse/meson.build and below
 python3 = import('python').find_installation()
 

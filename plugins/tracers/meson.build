@@ -2,8 +2,12 @@ gst_tracers_sources = [
   'gstlatency.c',
   'gstleaks.c',
   'gststats.c',
-  'gsttracers.c',
+  'gsttracers.c'
 ]
+
+if get_option('hawktracer-profiler')
+  gst_tracers_sources += ['gsthawktracerstreamer.c']
+endif
 
 if gst_debug
   gst_tracers_sources += ['gstlog.c']
@@ -19,7 +23,7 @@ gst_tracers = library('gstcoretracers',
   gst_tracers_sources,
   c_args : tracers_args,
   include_directories : [configinc],
-  dependencies : [gst_dep],
+  dependencies : [gst_dep] + profiling_deps,
   install : true,
   install_dir : '@0@/gstreamer-1.0'.format(get_option('libdir')),
 )

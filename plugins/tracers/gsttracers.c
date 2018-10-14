@@ -29,6 +29,7 @@
 #include "gstrusage.h"
 #include "gststats.h"
 #include "gstleaks.h"
+#include "gsthawktracerstreamer.h"
 
 static gboolean
 plugin_init (GstPlugin * plugin)
@@ -47,6 +48,10 @@ plugin_init (GstPlugin * plugin)
     return FALSE;
   if (!gst_tracer_register (plugin, "leaks", gst_leaks_tracer_get_type ()))
     return FALSE;
+  if (!gst_tracer_register (plugin, "hawktracerstreamer",
+          gst_hawktracer_streamer_tracer_get_type ()))
+    return FALSE;
+
   return TRUE;
 }
 

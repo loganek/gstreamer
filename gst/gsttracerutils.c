@@ -38,6 +38,10 @@
 #include "gsttracerfactory.h"
 #include "gsttracerutils.h"
 
+#ifdef GST_TRACER_ENABLE_HAWKTRACER
+#include <hawktracer/init.h>
+#endif /* GST_TRACER_ENABLE_HAWKTRACER */
+
 #ifndef GST_DISABLE_GST_TRACER_HOOKS
 
 /* tracer quarks */
@@ -56,7 +60,7 @@ static const gchar *_quark_strings[] = {
   "element-change-state-pre", "element-change-state-post",
   "mini-object-created", "mini-object-destroyed", "object-created",
   "object-destroyed", "mini-object-reffed", "mini-object-unreffed",
-  "object-reffed", "object-unreffed",
+  "object-reffed", "object-unreffed", "not-assigned",
 };
 
 GQuark _priv_gst_tracer_quark_table[GST_TRACER_QUARK_MAX];
@@ -65,6 +69,55 @@ GQuark _priv_gst_tracer_quark_table[GST_TRACER_QUARK_MAX];
 
 gboolean _priv_tracer_enabled = FALSE;
 GHashTable *_priv_tracers = NULL;
+
+#ifdef GST_TRACER_ENABLE_HAWKTRACER
+
+static void
+_priv_gst_tracer_destroy_bus (void *bus)
+{
+  HT_Timeline *timeline = (HT_Timeline *) bus;
+
+  if (timeline != NULL) {
+    ht_timeline_destroy (timeline);
+  }
+}
+
+static GPrivate _priv_tracer_ht_bus =
+G_PRIVATE_INIT (_priv_gst_tracer_destroy_bus);
+
+HT_Timeline *
+gst_tracer_get_ht_bus (void)
+{
+  HT_Timeline *timeline;
+  timeline = (HT_Timeline *) g_private_get (&_priv_tracer_ht_bus);
+
+  if (timeline == NULL) {
+    HT_ErrorCode ht_error;
+    const gint64 max_buffer_size = 1024 * 1024;
+    const gint64 default_buffer_size = 2048;
+    gint64 buffer_size = default_buffer_size;
+    const gchar *size_str = g_getenv ("GST_HT_BUFF_SIZE");
+    if (size_str) {
+      buffer_size = g_ascii_strtoll (size_str, NULL, 10);
+    }
+    if (buffer_size <= 0 || buffer_size > max_buffer_size) {
+      buffer_size = default_buffer_size;
+      GST_WARNING ("HawkTracer buffer size exceeds the range (0, %"
+          G_GINT64_FORMAT "]. Default value (%" G_GINT64_FORMAT
+          ") will be used", max_buffer_size, buffer_size);
+    }
+    timeline =
+        ht_timeline_create (buffer_size, HT_FALSE, HT_FALSE, "gst-tracer-bus",
+        &ht_error);
+    g_private_set (&_priv_tracer_ht_bus, timeline);
+    if (ht_error != HT_ERR_OK) {
+      g_critical ("Unable to create HawkTracer timeline: %d", ht_error);
+    }
+  }
+
+  return timeline;
+}
+#endif /* GST_TRACER_ENABLE_HAWKTRACER */
 
 /* Initialize the tracing system */
 void
@@ -87,6 +140,10 @@ _priv_gst_tracing_init (void)
     _priv_gst_tracer_quark_table[i] =
         g_quark_from_static_string (_quark_strings[i]);
   }
+
+#ifdef GST_TRACER_ENABLE_HAWKTRACER
+  ht_init (0, NULL);
+#endif /* GST_TRACER_ENABLE_HAWKTRACER */
 
   if (env != NULL && *env != '\0') {
     GstRegistry *registry = gst_registry_get ();
@@ -162,6 +219,11 @@ _priv_gst_tracing_deinit (void)
   g_list_free (h_list);
   g_hash_table_destroy (_priv_tracers);
   _priv_tracers = NULL;
+
+#ifdef GST_TRACER_ENABLE_HAWKTRACER
+  ht_deinit ();
+#endif /* GST_TRACER_ENABLE_HAWKTRACER */
+
 }
 
 static void

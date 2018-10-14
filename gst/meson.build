@@ -243,7 +243,7 @@ libgst = library('gstreamer-1.0', gst_sources,
   link_with : printf_lib,
   install : true,
   dependencies : [gobject_dep, gmodule_dep, glib_dep, mathlib, dl_dep] + backtrace_deps
-                   + platform_deps,
+                   + platform_deps + profiling_deps,
 )
 
 if build_gir

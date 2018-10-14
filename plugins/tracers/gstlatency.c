@@ -38,6 +38,7 @@
 #endif
 
 #include "gstlatency.h"
+#include "gst/gsttracerutils.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_latency_debug);
 #define GST_CAT_DEFAULT gst_latency_debug
@@ -54,8 +55,11 @@ static GQuark latency_probe_ts;
 
 static GstTracerRecord *tr_latency;
 
+#ifdef GST_TRACER_ENABLE_HAWKTRACER
+#include <hawktracer/event_macros_impl.h>
+HT_DECLARE_EVENT_KLASS (Latency, HT_Event, (INTEGER, uint64_t, latency))
+#endif /* GST_TRACER_ENABLE_HAWKTRACER */
 /* data helpers */
-
 /*
  * Get the element/bin owning the pad.
  *
@@ -71,8 +75,7 @@ static GstTracerRecord *tr_latency;
 /* TODO(ensonic): gst_pad_get_parent_element() would not work here, should we
  * add this as new api, e.g. gst_pad_find_parent_element();
  */
-static GstElement *
-get_real_pad_parent (GstPad * pad)
+     static GstElement *get_real_pad_parent (GstPad * pad)
 {
   GstObject *parent;
 
@@ -107,6 +110,13 @@ log_latency (const GstStructure * data, GstPad * sink_pad, guint64 sink_ts)
 
   gst_tracer_record_log (tr_latency, src, sink,
       GST_CLOCK_DIFF (src_ts, sink_ts), sink_ts);
+
+
+#ifdef GST_TRACER_ENABLE_HAWKTRACER
+  HT_TIMELINE_PUSH_EVENT (gst_tracer_get_ht_bus (), Latency,
+      GST_CLOCK_DIFF (src_ts, sink_ts));
+#endif /* GST_TRACER_ENABLE_HAWKTRACER */
+
   g_free (src);
   g_free (sink);
 }
@@ -196,6 +206,10 @@ do_push_event_pre (GstTracer * self, guint64 ts, GstPad * pad, GstEvent * ev)
 static void
 gst_latency_tracer_class_init (GstLatencyTracerClass * klass)
 {
+#ifdef GST_TRACER_ENABLE_HAWKTRACER
+  ht_Latency_register_event_klass ();
+#endif /* GST_TRACER_ENABLE_HAWKTRACER */
+
   latency_probe_id = g_quark_from_static_string ("latency_probe.id");
   latency_probe_pad = g_quark_from_static_string ("latency_probe.pad");
   latency_probe_ts = g_quark_from_static_string ("latency_probe.ts");

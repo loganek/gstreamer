@@ -27,6 +27,10 @@
 #include <gst/gstobject.h>
 #include <gst/gstconfig.h>
 
+#ifdef GST_TRACER_ENABLE_HAWKTRACER
+#include <hawktracer/timeline.h>
+#endif /* GST_TRACER_ENABLE_HAWKTRACER */
+
 G_BEGIN_DECLS
 
 typedef struct _GstTracer GstTracer;
@@ -70,6 +74,11 @@ GST_API
 gboolean gst_tracer_register (GstPlugin * plugin, const gchar * name, GType type);
 
 #endif
+
+#ifdef GST_TRACER_ENABLE_HAWKTRACER
+GST_API
+HT_Timeline* gst_tracer_get_ht_bus (void);
+#endif /* GST_TRACER_ENABLE_HAWKTRACER */
 
 #ifdef G_DEFINE_AUTOPTR_CLEANUP_FUNC
 G_DEFINE_AUTOPTR_CLEANUP_FUNC(GstTracer, gst_object_unref)
